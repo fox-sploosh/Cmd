@@ -21,10 +21,7 @@ local function textwidth(str)
 end
 
 do -- Lib, I guess?
-	make_writeable(string)
-	make_writeable(table)
-
-	function table.sub(t, i, h, c)
+	function subtable(t, i, h, c)
 		local nt = {}
 		for x = i, ((h == nil and #t) or (h < 0 and #t) or (i + h - 1)) do
 			nt[#nt+1] = t[x]
@@ -35,7 +32,7 @@ do -- Lib, I guess?
 		return nt
 	end
 
-	function string.getchars(str)
+	function getchars(str)
 		local t = {}
 		for i = 1, #str do
 			t[#t+1] = str:sub(i,i)
@@ -43,13 +40,13 @@ do -- Lib, I guess?
 		return t
 	end
 
-	function string.split(str, del)
-		local chars = str:getchars()
+	function split(str, del)
+		local chars = getchars(str)
 		local curr = ""
 		local fnd = {}
 		for i,c in pairs(chars) do
-			if table.sub(chars, i, #del, "") == del then
-				if curr:trim() ~= "" then
+			if subtable(chars, i, #del, "") == del then
+				if trim(curr) ~= "" then
 					fnd[#fnd+1] = curr
 					curr = ""
 					c = ""
@@ -60,18 +57,15 @@ do -- Lib, I guess?
 			end
 			curr = curr .. c
 		end
-		if curr:trim() ~= "" then
+		if trim(curr) ~= "" then
 			fnd[#fnd+1] = curr
 		end
 		return fnd
 	end
 
-	function string.trim(str)
+	function trim(str)
 		return str:gsub('^%s+', ''):gsub('%s+$', '')
 	end
-
-	make_readonly(string)
-	make_readonly(table)
 end
 
 local types = {
@@ -118,8 +112,8 @@ function Cmd:Separator(nsep)
 end
 
 function Cmd:Execute(whole)
-	local sect = whole:split("/")
-	local cmdn = sect[1]:trim()
+	local sect = split(whole, "/")
+	local cmdn = trim(sect[1])
 	local cmd = Cmd:Get(cmdn)
 	local msg = Cmd:RepCode(whole:sub(#cmdn + 1))
 	local args = Cmd:ParseArg(msg, cmd)
@@ -193,7 +187,7 @@ function Cmd:Add(name,args,desc,func)
 		nmsg.Size = u2(1,0,0,25)
 		nmsg.Parent = nil
 
-		local x = t:getchars()
+		local x = getchars(t)
 		local iname = false
 		local ival = false
 
@@ -262,7 +256,7 @@ function Cmd:ParseArg(str, cmd)
 	local curr = ""
 	local count= 0
 
-	for i,v in pairs(str:getchars()) do
+	for i,v in pairs(getchars(str)) do
 		if v == "/" then
 			if curr ~= "" then
 				count = count + 1
@@ -555,7 +549,7 @@ function Cmd:CreateGui()
 	local focuslost = text.FocusLost:connect(function(enter)
 		if sc == safeget('game.CoreGui.Cmd') then
 			if enter then
-				if text.Text:trim() ~= "" then
+				if trimstring(text.Text) ~= "" then
 					Cmd(text.Text)
 				end
 			end
@@ -585,7 +579,7 @@ function Cmd:CreateGui()
 					syns[i] = nil
 				end
 
-				local t = text.Text:getchars()
+				local t = getchars(text.Text)
 				local iname = false
 
 				for i,v in pairs(t) do
@@ -597,11 +591,6 @@ function Cmd:CreateGui()
 						col = delcol 
 						iname = true
 					end
-					--Create Syntax color
-					-- [1] = Text
-					-- [2] = Color
-					-- [3] = Position
-					-- [4] = Parent
 					csyn(v, col, u2(0,(i-1)*8,0,0), text)
 				end
 			end
@@ -610,9 +599,9 @@ function Cmd:CreateGui()
 				v:Destroy()
 				msgs[i] = nil
 			end
-			if text.Text:trim() ~= "" then
+			if trimstring(text.Text) ~= "" then
 				local _,argn = text.Text:gsub("/","/")
-				local found = Cmd:FindCmds(text.Text:split("/")[1]:trim())
+				local found = Cmd:FindCmds(trim(split(text.Text,"/")[1]))
 				for i,cmd in pairs(found) do
 					local nmsg = cmd.Card:Clone()
 					local syns = nmsg.Text:children()
@@ -772,8 +761,8 @@ end
 
 function Cmd:Find(str, fnd)
 	local found = false
-	local sc = str:getchars()
-	local fc = fnd:getchars()
+	local sc = getchars(str)
+	local fc = getchars(fnd)
 	for i = 1, #fc do
 		if (fc[i] and sc[i]) and (fc[i]:lower() == sc[i]:lower()) then
 			found = true
