@@ -118,11 +118,9 @@ if Apoc then
 
 	local ncard
 	local hcard
-
 	function round(num)
 	  return math.floor(num + 0.5) / 1
 	end
-
 	Cmd('view', '/pname:string', 'Sets your camera to another player', function()
 		if not pname then Cmd:Notify("Expected value for pname") return end
 		for i,player in pairs(Cmd:AltGetPlr(pname)) do
@@ -144,7 +142,7 @@ if Apoc then
 						local percent = round(player.Character.Humanoid.Health / player.Character.Humanoid.MaxHealth * 100)
 						hcard:ChangeText('Health: '..round(player.Character.Humanoid.Health).."/"..player.Character.Humanoid.MaxHealth.." : "..percent.."%")
 					end
-					if not player.Character then
+					if not player.Character:FindFirstChild("Humanoid") then
 						hcard:Destroy()
 						ncard:Destroy()
 						workspace.CurrentCamera.CameraSubject = game.Players.LocalPlayer.Character.Humanoid
