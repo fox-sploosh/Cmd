@@ -15,6 +15,65 @@ local function safedel(iname)
 	end
 end
 
+local function textwidth(str)
+	local sz = game:GetService('TextService'):GetTextSize(str, 15, Enum.Font.Code, Vector2.new(1e3, 1e3))
+	return sz.X
+end
+
+do -- Lib, I guess?
+	make_writeable(string)
+	make_writeable(table)
+
+	function table.sub(t, i, h, c)
+		local nt = {}
+		for x = i, ((h == nil and #t) or (h < 0 and #t) or (i + h - 1)) do
+			nt[#nt+1] = t[x]
+		end
+		if c then
+			return table.concat(nt, c)
+		end
+		return nt
+	end
+
+	function string.getchars(str)
+		local t = {}
+		for i = 1, #str do
+			t[#t+1] = str:sub(i,i)
+		end
+		return t
+	end
+
+	function string.split(str, del)
+		local chars = str:getchars()
+		local curr = ""
+		local fnd = {}
+		for i,c in pairs(chars) do
+			if table.sub(chars, i, #del, "") == del then
+				if curr:trim() ~= "" then
+					fnd[#fnd+1] = curr
+					curr = ""
+					c = ""
+					for x = i, i + #del - 1 do
+						chars[x] = ""
+					end
+				end
+			end
+			curr = curr .. c
+		end
+		if curr:trim() ~= "" then
+			fnd[#fnd+1] = curr
+		end
+		return fnd
+	end
+
+	function string.trim(str)
+		return str:gsub('^%s+', ''):gsub('%s+$', '')
+	end
+
+	make_readonly(string)
+	make_readonly(table)
+end
+
 local types = {
 	['number'] = tonumber,
 	['bool'] = function(a) 
@@ -59,11 +118,10 @@ function Cmd:Separator(nsep)
 end
 
 function Cmd:Execute(whole)
-	local sect = whole:trim():split("/")
+	local sect = whole:split("/")
 	local cmdn = sect[1]:trim()
 	local cmd = Cmd:Get(cmdn)
-	omsg = whole:sub(#cmdn + 1)
-	msg = Cmd:RepCode(omsg)
+	local msg = Cmd:RepCode(whole:sub(#cmdn + 1))
 	local args = Cmd:ParseArg(msg, cmd)
 
 	if cmd ~= nil then
@@ -85,76 +143,85 @@ function Cmd:Execute(whole)
 end
 
 function Cmd:Add(name,args,desc,func)
-	Commands[Cmd:Count() + 1] = {
-		Name = name,
-		ATab = (function()
-			local t = {}
-			for name,atype in args:gmatch('/(%a+):(%a+)') do
-				local a = {}
-				a.name = name
-				a.type = atype
-				t[#t+1] = a
+	local cmd = {}
+	cmd.Name = name
+	cmd.Args = args
+	cmd.Desc = desc
+	cmd.Func = func
+
+	cmd.ATab = (function()
+		local t = {}
+		for name,atype in args:gmatch('/(%a+):(%a+)') do
+			local a = {}
+			a.name = name
+			a.type = atype
+			t[#t+1] = a
+		end
+		return t
+	end)()
+
+	cmd.Satisfiable = (function()
+		local c = 0
+		for _ in args:gmatch("/%a+:%a+") do
+			c = c + 1
+		end
+		return c
+	end)()
+
+	cmd.Syntax = {}
+
+	cmd.Card = (function()
+		local nmsg = NCard:Clone()
+		local t = ("%s %s"):format(name,args)	
+		local u2 = UDim2.new
+		local c3 = function(r,g,b) return Color3.new(r/255,g/255,b/255) end
+		local delcol = c3(0,178,255)
+		local keycol = c3(178,96,255)
+		local propcol = c3(255,96,96)
+		local valcol = c3(95,255,96)
+
+		local function csyn(text, color, pos, parent)
+			local nsyn = synt:Clone()
+			nsyn.Text = text
+			nsyn.TextColor3 = color
+			nsyn.TextStrokeColor3 = c3(200,100,0)
+			nsyn.Position = pos
+			nsyn.Parent = parent or base
+			cmd.Syntax[#cmd.Syntax+1] = nsyn
+		end
+
+		nmsg.Size = u2(1,0,0,25)
+		nmsg.Parent = nil
+
+		local x = t:getchars()
+		local iname = false
+		local ival = false
+
+		for i,v in pairs(x) do
+			local col = keycol
+			if iname then 
+				col = propcol
+			elseif ival then 
+				col = valcol
 			end
-			return t
-		end)(),
-		Args = args,
-		Desc = desc,
-		Func = func,
-		Satisfiable = (function()
-			local c = 0
-			for _ in args:gmatch("/%a+:%a+") do
-				c = c + 1
+			if v == "/" then 
+				col = delcol
+				iname = true
+				ival = false
+			elseif v == ":" then 
+				col = delcol
+				ival = true
+				iname = false
 			end
-			return c
-		end)(),
-		Card = (function()
-			local function csyn(text, color, pos, parent)
-				local nsyn = synt:Clone()
-				nsyn.Text = text
-				nsyn.TextColor3 = color
-				nsyn.Position = pos
-				nsyn.Parent = parent or base
-			end
-			local nmsg = NCard:Clone()
-			local t = ("%s %s"):format(name,args)	
-			local u2 = UDim2.new
-			local c3 = function(r,g,b) return Color3.new(r/255,g/255,b/255) end
-			local delcol = c3(0,178,255)
-			local keycol = c3(178,96,255)
-			local propcol = c3(255,96,96)
-			local valcol = c3(95,255,96)
+			csyn(v, col, u2(0,(i-1)*8,0,0), nmsg.Text)
+		end
 
-			nmsg.Size = u2(1,0,0,25)
-			nmsg.Parent = nil
+		nmsg.Text.Text = ("%s %s - %s"):format(string.rep(" ", #name),string.rep(" ", #args),desc)
 
-			local x = t:getchars()
-			local iname = false
-			local ival = false
+		return nmsg
+	end)()
 
-			for i,v in pairs(x) do
-				local col = keycol
-				if iname then 
-					col = propcol
-				elseif ival then 
-					col = valcol
-				end
-				if v == "/" then 
-					col = delcol
-					iname = true
-					ival = false
-				elseif v == ":" then 
-					col = delcol
-					ival = true
-					iname = false
-				end
-				csyn(v, col, u2(0,(i-1)*8,0,0), nmsg.Text)
-			end
-
-			nmsg.Text.Text = ("%s %s - %s"):format(string.rep(" ", #name),string.rep(" ", #args),desc)
-
-			return nmsg
-		end)()
-	}
+	Commands[#Commands+1] = cmd
 end
 
 function Cmd:Get(name)
@@ -168,7 +235,7 @@ end
 function Cmd:RepCode(msg)
 	local codeparts = {}
 
-	for s,isplain,code in msg:gmatch("()(.)(%b[])") do
+	for s,isplain,code in msg:gmatch("()(%$?)(%b[])") do
 		table.insert(codeparts, {
 			plain = isplain == "$",
 			code = code:sub(2,#code-1),
@@ -190,50 +257,25 @@ function Cmd:RepCode(msg)
 end
 
 function Cmd:ParseArg(str, cmd)
-	local t = str:getchars()
-	local fargs = {}
 	local args = {}
+	local cargs= cmd.ATab
 	local curr = ""
-	local cuarg = 0
-	local iname = false
-	local ivar = false
+	local count= 0
 
-	for i,v in pairs(t) do
+	for i,v in pairs(str:getchars()) do
 		if v == "/" then
-			cuarg = cuarg + 1
-			iname = true
-			ivar = false
-		elseif v == ":" then
-			ivar = true
-			iname = false
+			if curr ~= "" then
+				count = count + 1
+				args[cargs[count].name] = types[cargs[count].type] and types[cargs[count].type](curr) or curr
+				curr = ""
+			end
 		else
-			if not fargs[cuarg] then fargs[cuarg] = {} end
-			if not fargs[cuarg].name then fargs[cuarg].name = "" end
-			if not fargs[cuarg].val then fargs[cuarg].val = "" end
-			if iname then
-				fargs[cuarg].name = fargs[cuarg].name .. v
-				fargs[cuarg].used = false
-			elseif ivar then
-				fargs[cuarg].val = fargs[cuarg].val .. v
-			end
+			curr = curr .. v
 		end
 	end
 
-	for i,arg in pairs(fargs) do
-		for i,carg in pairs(cmd.ATab) do
-			if Cmd:Find(carg.name, arg.name) then
-				local v = types[carg.type] and types[carg.type](arg.val) or arg.val:trim()
-				args[carg.name] = v
-
-				fargs[i].used = true
-			end
-		end
-	end
-
-	for i,v in pairs(fargs) do
-		if not v.used then
-			Cmd:Notify('arg '..v.name..' was not used and has been dropped')
-		end
+	if curr ~= "" then
+		args[cargs[count+1].name] = types[cargs[count+1].type] and types[cargs[count+1].type](curr) or curr
 	end
 
 	return args
@@ -267,6 +309,18 @@ function Cmd:GetPlr(n)
 		elseif n == "nonguests" then
 			for i,v in pairs(players) do
 				if not v.Guest then
+					fnd[#fnd + 1] = v
+				end
+			end
+		elseif n == "team" then
+			for i,v in pairs(players) do
+				if v.TeamColor == game.Players.LocalPlayer.TeamColor then
+					fnd[#fnd + 1] = v
+				end
+			end
+		elseif n == "nonteam" then
+			for i,v in pairs(players) do
+				if v.TeamColor ~= game.Players.LocalPlayer.TeamColor then
 					fnd[#fnd + 1] = v
 				end
 			end
@@ -459,11 +513,6 @@ function Cmd:CreateGui()
 		syns[#syns+1] = nsyn
 	end
 
-	function textsize(str)
-		local sz = game:GetService('TextService'):GetTextSize(str, 15, Enum.Font.Code, Vector2.new(1e3, 1e3))
-		return sz.X
-	end
-	
 	csyn("Press ", c3(96,178,255), u2(0,20,0,-2))
 	csyn("\";\" "  , c3(255,96,96), u2(0,20+6*8,0,-2))
 	csyn("to focus onto this command prompt", c3(96,178,255), u2(0,20+10*8,0,-2))
@@ -523,7 +572,6 @@ function Cmd:CreateGui()
 	local delcol = c3(0,178,255)
 	local keycol = c3(178,96,255)
 	local propcol = c3(255,96,96)
-	local valcol = c3(95,255,96)
 	
 	local tchanged = text:GetPropertyChangedSignal("Text"):connect(function()
 		if sc == safeget('game.CoreGui.Cmd') then
@@ -539,25 +587,21 @@ function Cmd:CreateGui()
 
 				local t = text.Text:getchars()
 				local iname = false
-				local ival = false
 
 				for i,v in pairs(t) do
 					local col = keycol
 					if iname then 
-						col = propcol 
-					elseif ival then 
-						col = valcol 
+						col = propcol
 					end
 					if v == "/" then 
 						col = delcol 
-						iname = true 
-						ival = false 
+						iname = true
 					end
-					if v == ":" then 
-						col = delcol 
-						ival = true 
-						iname = false 
-					end
+					--Create Syntax color
+					-- [1] = Text
+					-- [2] = Color
+					-- [3] = Position
+					-- [4] = Parent
 					csyn(v, col, u2(0,(i-1)*8,0,0), text)
 				end
 			end
@@ -567,10 +611,30 @@ function Cmd:CreateGui()
 				msgs[i] = nil
 			end
 			if text.Text:trim() ~= "" then
+				local _,argn = text.Text:gsub("/","/")
 				local found = Cmd:FindCmds(text.Text:split("/")[1]:trim())
 				for i,cmd in pairs(found) do
 					local nmsg = cmd.Card:Clone()
-					
+					local syns = nmsg.Text:children()
+					local count = 0
+					local should = false
+
+					for i,v in pairs(syns) do
+						local c = v.Text
+						if c == "/" then
+							count = count + 1
+							should = true
+						elseif c == ":" then
+							should = false
+						else
+							if count == argn and should then
+								v.TextStrokeTransparency = 0.8
+							else
+								v.TextStrokeTransparency = 1
+							end
+						end
+					end
+
 					nmsg.Position = UDim2.new(0,0,1,-i*25-25)
 					nmsg.Parent = sc
 					
@@ -596,7 +660,7 @@ function Cmd:PNotify(msg)
 
 	local u2 = UDim2.new
 
-	local msize = textsize(msg)
+	local msize = textwidth(msg)
 	local card = NCard:Clone()
 	card.Text.Text = msg
 	card.Text.TextXAlignment = 2
@@ -627,7 +691,7 @@ function Cmd:PNotify(msg)
 	end
 	function cobj:ChangeText(ntext)
 		if card and card.Parent ~= nil then
-			local s = textsize(ntext)
+			local s = textwidth(ntext)
 			card.Text.Text = ntext
 			card.Size = u2(0,s+24,0,25)
 			card.Position = u2(0.5,-(s+24)/2,0,card.Position.Y.Offset)
@@ -657,7 +721,7 @@ function Cmd:Notify(msg)
 
 	local u2 = UDim2.new
 
-	local msize = textsize(msg)
+	local msize = textwidth(msg)
 	local card = NCard:Clone()
 	card.Text.Text = msg
 	card.Text.TextXAlignment = 2
