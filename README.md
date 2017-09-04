@@ -3,8 +3,10 @@ A fancy roblox command line thinga-ma-jigger.
 
 # Use
 Execute `Cmd.lua`.
+Make sure `Cmd.lua` and `CmdBase.lua` are in the same directory.
 
-If your exploit has the `loadfile` function, use this:
+# Protosmasher
+Place the files in your workspace folder and execute the following:
 ```Lua
 loadfile('Cmd.lua')()
 ```
