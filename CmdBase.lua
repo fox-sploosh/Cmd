@@ -549,7 +549,7 @@ function Cmd:CreateGui()
 	local focuslost = text.FocusLost:connect(function(enter)
 		if sc == safeget('game.CoreGui.Cmd') then
 			if enter then
-				if trimstring(text.Text) ~= "" then
+				if trim(text.Text) ~= "" then
 					Cmd(text.Text)
 				end
 			end
@@ -599,7 +599,7 @@ function Cmd:CreateGui()
 				v:Destroy()
 				msgs[i] = nil
 			end
-			if trimstring(text.Text) ~= "" then
+			if trim(text.Text) ~= "" then
 				local _,argn = text.Text:gsub("/","/")
 				local found = Cmd:FindCmds(trim(split(text.Text,"/")[1]))
 				for i,cmd in pairs(found) do
