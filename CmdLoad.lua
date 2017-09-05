@@ -1,4 +1,3 @@
-Cmd = loadfile("CmdBase.lua")()
 Apoc = Cmd:Apoc()
 
 

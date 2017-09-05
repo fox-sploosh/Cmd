@@ -66,6 +66,20 @@ do -- Lib, I guess?
 	function trim(str)
 		return str:gsub('^%s+', ''):gsub('%s+$', '')
 	end
+
+	function isplit(str, del)
+		local t = split(str, del)
+		local index = 0
+		local pos = 0
+		local max = #t
+		return
+			function()
+				index = index + 1
+				if index > max then return end
+				pos = pos + (t[index-1] and #t[index-1] or 0)
+				return pos,t[index]
+			end
+	end
 end
 
 local types = {
@@ -115,8 +129,8 @@ function Cmd:Execute(whole)
 	local sect = split(whole, "/")
 	local cmdn = trim(sect[1])
 	local cmd = Cmd:Get(cmdn)
-	local msg = Cmd:RepCode(whole:sub(#cmdn + 1))
-	local args = Cmd:ParseArg(msg, cmd)
+	local msg = Cmd:RepCode(whole:sub(#cmdn + 2))
+	local args, extra = Cmd:ParseArg(msg, cmd)
 
 	if cmd ~= nil then
 		spawn(function()
@@ -128,12 +142,11 @@ function Cmd:Execute(whole)
 			for i,v in pairs(args) do
 				getfenv(x)[i] = v
 			end
-			x()
+			x(extra)
 		end)
 	else
 		Cmd:Notify('Invalid command entered: '..sect[1])
 	end
-	local e = tick()
 end
 
 function Cmd:Add(name,args,desc,func)
@@ -229,12 +242,12 @@ end
 function Cmd:RepCode(msg)
 	local codeparts = {}
 
-	for s,isplain,code in msg:gmatch("()(%$?)(%b[])") do
+	for s,p,code in msg:gmatch("()(%$?)(%b[])") do
 		table.insert(codeparts, {
-			plain = isplain == "$",
+			plain = #p == 1,
 			code = code:sub(2,#code-1),
-			st = s,
-			en = s + #code + 1
+			st = s - 1,
+			en = s + #code
 		})
 	end
 
@@ -252,27 +265,20 @@ end
 
 function Cmd:ParseArg(str, cmd)
 	local args = {}
+	local extras = {}
 	local cargs= cmd.ATab
-	local curr = ""
-	local count= 0
+	local ltype = "string"
 
-	for i,v in pairs(getchars(str)) do
-		if v == "/" then
-			if curr ~= "" then
-				count = count + 1
-				args[cargs[count].name] = types[cargs[count].type] and types[cargs[count].type](curr) or curr
-				curr = ""
-			end
+	for i,arg in pairs(split(str, "/")) do
+		if cargs[i] then
+			ltype = cargs[i].type
+			args[cargs[i].name] = types[cargs[i].type] and types[cargs[i].type](arg) or arg
 		else
-			curr = curr .. v
+			extras[#extras+1] = types[ltype](arg)
 		end
 	end
 
-	if curr ~= "" then
-		args[cargs[count+1].name] = types[cargs[count+1].type] and types[cargs[count+1].type](curr) or curr
-	end
-
-	return args
+	return args, extras
 end
 
 function Cmd:GetPlr(n)
@@ -563,9 +569,9 @@ function Cmd:CreateGui()
 		end
 	end)
 
-	local delcol = c3(0,178,255)
 	local keycol = c3(178,96,255)
-	local propcol = c3(255,96,96)
+	local delcol = c3(0,178,255)
+	local propcol = c3(96,255,96)
 	
 	local tchanged = text:GetPropertyChangedSignal("Text"):connect(function()
 		if sc == safeget('game.CoreGui.Cmd') then
@@ -580,15 +586,16 @@ function Cmd:CreateGui()
 				end
 
 				local t = getchars(text.Text)
+				local msg = text.Text
 				local iname = false
+				local col = keycol
 
 				for i,v in pairs(t) do
-					local col = keycol
-					if iname then 
+					if iname then
 						col = propcol
 					end
-					if v == "/" then 
-						col = delcol 
+					if v == "/" then
+						col = delcol
 						iname = true
 					end
 					csyn(v, col, u2(0,(i-1)*8,0,0), text)
@@ -611,7 +618,9 @@ function Cmd:CreateGui()
 					for i,v in pairs(syns) do
 						local c = v.Text
 						if c == "/" then
-							count = count + 1
+							if count ~= cmd.Satisfiable then
+								count = count + 1
+							end
 							should = true
 						elseif c == ":" then
 							should = false
