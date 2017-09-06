@@ -82,10 +82,10 @@ if Apoc then
 		end
 	end)
 	Cmd('spawn', '/pname:string /items:string', 'Spawns an item. Syntax: `item=amount,item=amount`. Default amount is 1.', function()
-		items = items:split(',')
+		items = split(items, ',')
 		for k,it in pairs(items) do
-			local amount = it:split("=")[2] or 1
-			it = it:split("=")[1]
+			local amount = split(it, "=")[2] or 1
+			it = split(it, "=")[1]
 			local sel
 			for i,v in pairs(game.Lighting.LootDrops:children()) do
 				if Cmd:GFind(v.Name, it) then
@@ -157,9 +157,10 @@ if Apoc then
 		end
 	end)
 	Cmd('lua', '/code:string', 'Executes the lua code provided. No error catching!', function()
-		local f = loadstring(omsg)
-		if not f then Cmd:Notify("Error in provided lua code!") end
-		f()
+		local f, err = loadstring(omsg)
+		if not f then Cmd:Notify(err) return end
+		local k, e = pcall(f)
+		if not k then Cmd:Notify(e) return end
 	end)
 	local msgcolors = {"Red", "White", "Blue", "Green", "Yellow"}
 	local msgcolor = "White"
@@ -314,4 +315,4 @@ else
 	Cmd:Notify('Regular commands loaded')
 end
 
-Cmd:Notify('Welcome, '..game.Players.LocalPlayer.Name..'!')
+Cmd:Notify('Hello, '..game.Players.LocalPlayer.Name..'!')

@@ -364,6 +364,10 @@ end
 
 function Cmd:Apoc()
 	if game.Players.LocalPlayer.PlayerGui:FindFirstChild("HitEqualsYouDie") then
+		if not debug.getfenv or getsenv then
+			Cmd:Notify('Exploit not compatible')
+			return false
+		end
 		fireserver = debug.getfenv(game.Players.LocalPlayer.PlayerGui.HitEqualsYouDie).shared.fireserver
 		if not fireserver then
 			return false
