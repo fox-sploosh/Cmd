@@ -13,6 +13,20 @@ if not c then error(d) end
 
 c()
 
+--[[ Example Command:
+
+-- Adding a command
+Cmd('kill', '/pname:string', 'kills a player', function() 
+	for i,player in pairs(Cmd:GetPlr(pname)) do
+		player.Character:BreakJoints()\
+	end
+end)
+
+-- Executing a command
+Cmd('kill/PlayerName')
+
+]]
+
 -- Extra commands can go below :D
 
 
