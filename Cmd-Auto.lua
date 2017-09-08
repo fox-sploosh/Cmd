@@ -18,7 +18,7 @@ c()
 -- Adding a command
 Cmd('kill', '/pname:string', 'kills a player', function() 
 	for i,player in pairs(Cmd:GetPlr(pname)) do
-		player.Character:BreakJoints()\
+		player.Character:BreakJoints()
 	end
 end)
 

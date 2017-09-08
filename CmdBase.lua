@@ -155,6 +155,7 @@ function Cmd:Add(name,args,desc,func)
 	cmd.Args = args
 	cmd.Desc = desc
 	cmd.Func = func
+	cmd.Syntax = {}
 
 	cmd.ATab = (function()
 		local t = {}
@@ -175,9 +176,11 @@ function Cmd:Add(name,args,desc,func)
 		return c
 	end)()
 
-	cmd.Syntax = {}
-
 	cmd.Card = (function()
+		if not Instance then
+			return
+		end
+
 		local nmsg = NCard:Clone()
 		local t = ("%s %s"):format(name,args)	
 		local u2 = UDim2.new
@@ -228,7 +231,7 @@ function Cmd:Add(name,args,desc,func)
 		return nmsg
 	end)()
 
-	Commands[#Commands+1] = cmd
+	Commands[name] = cmd
 end
 
 function Cmd:Get(name)
@@ -264,12 +267,26 @@ function Cmd:RepCode(msg)
 end
 
 function Cmd:ParseArg(str, cmd)
+	local chars = getchars(str)
 	local args = {}
-	local extras = {}
-	local cargs= cmd.ATab
+	local fargs = {}
+	local cargs = cmd.ATab
 	local ltype = "string"
+	local curr = ""
+	local inquote = false
 
-	for i,arg in pairs(split(str, "/")) do
+	for i,c in pairs(chars) do
+		if curr == "/" and not inquote then
+			fargs[#fargs+1] = curr
+			curr = ""
+		elseif curr == '"' then
+			inquote = not inquote
+		else
+			curr = curr .. c
+		end
+	end
+
+	for i,arg in pairs(fargs) do
 		if cargs[i] then
 			ltype = cargs[i].type
 			args[cargs[i].name] = types[cargs[i].type] and types[cargs[i].type](arg) or arg
@@ -402,6 +419,10 @@ function Cmd:Apoc()
 end
 
 function Cmd:CreateGui()
+	if not Instance then
+		return
+	end
+
 	safedel'game.CoreGui.Cmd'
 	local new = LoadLibrary("RbxUtility").Create
 	local cui = game.CoreGui
@@ -780,8 +801,7 @@ function Cmd:Find(str, fnd)
 		if (fc[i] and sc[i]) and (fc[i]:lower() == sc[i]:lower()) then
 			found = true
 		else
-			found = false
-			break
+			return false
 		end
 	end
 	return found
