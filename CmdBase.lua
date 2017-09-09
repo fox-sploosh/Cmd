@@ -89,7 +89,7 @@ local types = {
 	end,
 	['string'] = tostring,
 	['table'] = function(a)
-		local b = loadstring(a)
+		local b = loadstring("return "..a)
 		if b then
 			pcall(function()
 				b = b()
@@ -201,7 +201,6 @@ function Cmd:Add(name,args,desc,func)
 		end
 
 		nmsg.Size = u2(1,0,0,25)
-		nmsg.Parent = nil
 
 		local x = getchars(t)
 		local iname = false
@@ -259,7 +258,14 @@ function Cmd:RepCode(msg)
 	for i,v in pairs(codeparts) do
 		local diff = sz - #msg
 		if not v.plain then
-			msg = msg:sub(1, v.st - diff) .. tostring(loadstring("return " .. v.code)()) .. msg:sub(v.en - diff)
+			local x, err = loadstring("return "..v.code)
+			if not x then
+				msg = msg:sub(1, v.st - diff) .. "[" .. split(err, ":")[3] .. "]" .. msg:sub(v.en - diff)
+			else
+				local ret
+				local s,e = pcall(function() ret = x() end)
+				msg = msg:sub(1, v.st - diff) .. tostring(s and ret or ("[" .. trim(split(e,":")[3]) .. "]")) .. msg:sub(v.en - diff)
+			end
 		end
 	end
 
@@ -269,6 +275,7 @@ end
 function Cmd:ParseArg(str, cmd)
 	local chars = getchars(str)
 	local args = {}
+	local extras = {}
 	local fargs = {}
 	local cargs = cmd.ATab
 	local ltype = "string"
@@ -276,14 +283,18 @@ function Cmd:ParseArg(str, cmd)
 	local inquote = false
 
 	for i,c in pairs(chars) do
-		if curr == "/" and not inquote then
+		if c == "/" and trim(curr) ~= "" and not inquote then
 			fargs[#fargs+1] = curr
 			curr = ""
-		elseif curr == '"' then
+		elseif c == '"' then
 			inquote = not inquote
 		else
 			curr = curr .. c
 		end
+	end
+
+	if trim(curr) ~= "" then
+		fargs[#fargs+1] = curr
 	end
 
 	for i,arg in pairs(fargs) do
@@ -442,89 +453,19 @@ function Cmd:CreateGui()
 	
 	sc = new'ScreenGui'{Name = "Cmd",Parent = cui}
 	
-	local base = new'Frame'{
-		Name = "Base",
-		Size = u2(0, 0, 0, 25),
-		Position = u2(0, 0, 1, -25),
-		BackgroundColor3 = c3(10,30,50),
-		BorderSizePixel = 0,
-		BackgroundTransparency = 0.1,
-		ClipsDescendants = true,
-		Parent = sc
-	}
+	local base=new'Frame'{Name="Base",Size=u2(0,0,0,25),Position=u2(0,0,1,-25),BackgroundColor3=c3(10,30,50),BorderSizePixel=0,BackgroundTransparency=0.1,ClipsDescendants=true,Parent=sc}
 
-	local precursor = new'TextLabel'{
-		Name = "Precursor",
-		Size = u2(0, 20, 0, 25),
-		Position = u2(0, 0, 0, -1),
-		BackgroundTransparency = 1,
-		TextColor3 = c3(235,235,235),
-		Text = ">",
-		Font = Enum.Font.Code,
-		BorderSizePixel = 0,
-		TextSize = 15,
-		Parent = base
-	}
+	local precursor=new'TextLabel'{Name="Precursor",Size=u2(0,20,0,25),Position=u2(0,0,0,-1),BackgroundTransparency=1,TextColor3=c3(235,235,235),Text=">",Font=Enum.Font.Code,BorderSizePixel=0,TextSize=15,Parent=base}
 
-	local text = new'TextBox'{
-		Name = "Text",
-		Size = u2(1, -20, 0, 26),
-		Position = u2(0,20,0,-2),
-		Text = "",
-		Transparency = 1,
-		BorderSizePixel = 0,
-		TextColor3 = c3(235,235,235),
-		TextXAlignment = 0,
-		Parent = base
-	}
+	local text=new'TextBox'{Name="Text",Size=u2(1,-20,0,26),Position=u2(0,20,0,-2),Text="",Transparency=1,BorderSizePixel=0,TextColor3=c3(235,235,235),TextXAlignment=0,Parent=base}
 	
-	local cursor = new'Frame'{
-		Name = "Cursor",
-		Size = u2(0,1,0,15),
-		Position = u2(0,20,0,5),
-		BackgroundColor3 = c3(255,255,255),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Parent = base
-	}
+	local cursor=new'Frame'{Name="Cursor",Size=u2(0,1,0,15),Position=u2(0,20,0,5),BackgroundColor3=c3(255,255,255),BackgroundTransparency=1,BorderSizePixel=0,Parent=base}
 	
-	local msg = new'Frame'{
-		Name = "Message",
-		Size = u2(1,0,0,25),
-		Position = u2(0,0,2,0),
-		BackgroundColor3 = c3(0,0,0),
-		BorderSizePixel = 0,
-		BackgroundTransparency = 0.1,
-		ClipsDescendants = true,
-		Parent = sc
-	}
+	local msg=new'Frame'{Name="Message",Size=u2(1,0,0,25),Position=u2(0,0,2,0),BackgroundColor3=c3(0,0,0),BorderSizePixel=0,BackgroundTransparency=0.1,ClipsDescendants=true,Parent=sc}
 	
-	local msgtext = new'TextLabel'{
-		Name = "Text",
-		Size = u2(1, 0, 0, 25),
-		Position = u2(0, 4, 0, -2),
-		BackgroundTransparency = 1,
-		TextColor3 = c3(235,235,235),
-		Text = "",
-		Font = Enum.Font.Code,
-		BorderSizePixel = 0,
-		TextSize = 15,
-		TextXAlignment = 0,
-		Parent = msg
-	}
+	local msgtext=new'TextLabel'{Name="Text",Size=u2(1,0,0,25),Position=u2(0,4,0,-2),BackgroundTransparency=1,TextColor3=c3(235,235,235),Text="",Font=Enum.Font.Code,BorderSizePixel=0,TextSize=15,TextXAlignment=0,Parent=msg}
 	
-	local syn = new'TextLabel'{
-		Name = "Syntax",
-		Size = u2(0,8,0,25),
-		BackgroundTransparency = 1,
-		TextColor3 = c3(235,235,235),
-		Text = "",
-		Font = Enum.Font.Code,
-		BorderSizePixel = 0,
-		TextSize = 15,
-		TextXAlignment = 0,
-		TextTransparency = 0
-	}
+	local syn=new'TextLabel'{Name="Syntax",Size=u2(0,8,0,25),BackgroundTransparency=1,TextColor3=c3(235,235,235),Text="",Font=Enum.Font.Code,BorderSizePixel=0,TextSize=15,TextXAlignment=0,TextTransparency=0}
 
 	NCard = msg
 	synt = syn
@@ -597,6 +538,8 @@ function Cmd:CreateGui()
 	local keycol = c3(178,96,255)
 	local delcol = c3(0,178,255)
 	local propcol = c3(96,255,96)
+	local qcol = c3(178,178,96)
+	local ccol = c3(255,96,96)
 	
 	local tchanged = text:GetPropertyChangedSignal("Text"):connect(function()
 		if sc == safeget('game.CoreGui.Cmd') then
@@ -613,13 +556,29 @@ function Cmd:CreateGui()
 				local t = getchars(text.Text)
 				local msg = text.Text
 				local iname = false
+				local inquote = false
+				local icode = false
 				local col = keycol
 
 				for i,v in pairs(t) do
 					if iname then
 						col = propcol
 					end
-					if v == "/" then
+					if inquote then
+						col = qcol
+					end
+					if icode then
+						col = ccol
+					end
+					if v == '"' then
+						inquote = not inquote
+						col = qcol
+					elseif v == "[" then
+						col = ccol
+						icode = true
+					elseif v == "]" and icode then
+						icode = false
+					elseif v == "/" and not inquote and not icode then
 						col = delcol
 						iname = true
 					end
@@ -632,7 +591,22 @@ function Cmd:CreateGui()
 				msgs[i] = nil
 			end
 			if trim(text.Text) ~= "" then
-				local _,argn = text.Text:gsub("/","/")
+				local argn = (function()
+					local t = text.Text
+					local chars = getchars(t)
+					local count = 0
+					local inquote = false
+
+					for i,v in pairs(chars) do
+						if v == '"' then
+							inquote = not inquote
+						elseif v == "/" and not inquote then
+							count = count + 1
+						end
+					end
+
+					return count
+				end)()
 				local found = Cmd:FindCmds(trim(split(text.Text,"/")[1]))
 				for i,cmd in pairs(found) do
 					local nmsg = cmd.Card:Clone()

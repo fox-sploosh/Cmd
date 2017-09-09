@@ -149,7 +149,7 @@ if Apoc then
 				end)
 				break
 			else
-				Cmd:Notify('Player ''..player.Name..'' has not spawned yet')
+				Cmd:Notify('Player '..player.Name..' has not spawned yet')
 				break
 			end
 			Cmd:SortNCards()
