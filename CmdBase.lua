@@ -83,17 +83,19 @@ do -- Lib, I guess?
 end
 
 local types = {
-	['number'] = tonumber,
-	['bool'] = function(a) 
+	number = tonumber,
+	bool = function(a) 
 		return a == "true" and true or a == "false" and false
 	end,
-	['string'] = tostring,
-	['table'] = function(a)
-		local b = loadstring("return "..a)
+	string = tostring,
+	table = function(a)
+		local b,e = loadstring("return "..a)
+		if not b then warn(split(e,":")[3]) return end
 		if b then
-			pcall(function()
+			local s,e = pcall(function()
 				b = b()
 			end)
+			if not s then warn(split(e,":")[3]) return end
 		end
 		if type(b) == "table" then
 			return b
@@ -129,12 +131,12 @@ function Cmd:Execute(whole)
 	local sect = split(whole, "/")
 	local cmdn = trim(sect[1])
 	local cmd = Cmd:Get(cmdn)
-	local msg = Cmd:RepCode(whole:sub(#cmdn + 2))
-	local args, extra = Cmd:ParseArg(msg, cmd)
 
 	if cmd ~= nil then
+		local msg = Cmd:RepCode(whole:sub(#cmdn + 2))
+		local args = Cmd:ParseArg(msg, cmd)
 		spawn(function()
-			if #args > cmd.Satisfiable then
+			if #args <= cmd.Satisfiable then
 				Cmd:Notify('Invalid arguments: Argument amount not satisfied')
 				return
 			end
@@ -142,7 +144,7 @@ function Cmd:Execute(whole)
 			for i,v in pairs(args) do
 				getfenv(x)[i] = v
 			end
-			x(extra)
+			x()
 		end)
 	else
 		Cmd:Notify('Invalid command entered: '..sect[1])
@@ -275,7 +277,6 @@ end
 function Cmd:ParseArg(str, cmd)
 	local chars = getchars(str)
 	local args = {}
-	local extras = {}
 	local fargs = {}
 	local cargs = cmd.ATab
 	local ltype = "string"
@@ -301,12 +302,10 @@ function Cmd:ParseArg(str, cmd)
 		if cargs[i] then
 			ltype = cargs[i].type
 			args[cargs[i].name] = types[cargs[i].type] and types[cargs[i].type](arg) or arg
-		else
-			extras[#extras+1] = types[ltype](arg)
 		end
 	end
 
-	return args, extras
+	return args
 end
 
 function Cmd:GetPlr(n)
@@ -392,7 +391,7 @@ end
 
 function Cmd:Apoc()
 	if game.Players.LocalPlayer.PlayerGui:FindFirstChild("HitEqualsYouDie") then
-		if not debug.getfenv or getsenv then
+		if not debug.getfenv or not getsenv then
 			Cmd:Notify('Exploit not compatible')
 			return false
 		end
@@ -400,6 +399,8 @@ function Cmd:Apoc()
 		if not fireserver then
 			return false
 		end
+		repeat wait() until game.Players.LocalPlayer.Character
+		MyHumanoid = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
 		setfenv(1,getfenv(game:GetService('ReplicatedStorage').ClearAllChildren))
 		function destroy(obj) fireserver('Destruct', obj) end
 		function changeparent(obj, npar) fireserver('ChangeParent', obj, npar) end
@@ -408,6 +409,7 @@ function Cmd:Apoc()
 			local you = player.Character
 			local mh = me:FindFirstChildOfClass('Humanoid')
 			local yh = me:FindFirstChildOfClass('Humanoid')
+			MyHumanoid = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
 			
 			changeparent(yh, me)
 			changeparent(mh, you)
@@ -417,7 +419,14 @@ function Cmd:Apoc()
 			changeparent(mh, me)
 			while yh.Parent ~= you and mh.Parent ~= me do game:GetService('RunService').Heartbeat:wait() end
 		end
-		function sethum(prop, nval) fireserver('HealthSet', prop, nval) end
+		function sethum(prop, nval) 
+			fireserver('HealthSet', prop, nval)
+			while game.Players.LocalPlayer.Character.Humanoid[prop] ~= nval do
+				print("Not changed >:(") 
+				game:GetService('RunService').Heartbeat:wait()
+			end
+			print("changed :D")
+		end
 		function changeval(obj, nval) fireserver('ChangeValue', obj, nval) end
 		function damage(player, amount) fireserver('Damage', player, amount) end
 		function invispart(brick) fireserver('BreakWindow2', brick, true) end
@@ -760,10 +769,12 @@ function Cmd:SortNCards()
 
 	local count = 0
 	for i = #NCards, 1, -1 do
-		local card = NCards[i]
-		count = count + 1
-		local pos = u2(0.5,-card.Size.Width.Offset/2,0,25*(count-1))
-		tpos(card, pos, 0.5)
+		if NCards[i] then
+			local card = NCards[i]
+			count = count + 1
+			local pos = u2(0.5,-card.Size.Width.Offset/2,0,25*(count-1))
+			tpos(card, pos, 0.5)
+		end
 	end
 end
 

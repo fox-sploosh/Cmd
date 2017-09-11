@@ -21,6 +21,7 @@ if Apoc then
 				sethum('MaxHealth', 1e9)
 				sethum('Health', 1e9)
 			end)
+			break
 		end
 	end)
 	Cmd('ungod', '/pname:string', 'Ungods a player', function()
@@ -39,14 +40,6 @@ if Apoc then
 	Cmd('nothirst', '/pname:string', 'Sets a players thirst to -1 [NOTE: Drinking will bring this back up]', function()
 		for i,player in pairs(Cmd:GetPlr(pname)) do
 			changeval(player.playerstats.Thirst, -1)
-		end
-	end)
-	Cmd('sethealth', '/pname:string /health:number', 'Sets a players health', function()
-		for i,player in pairs(Cmd:GetPlr(pname)) do
-			changehum(player, function()
-				sethum('MaxHealth', health)
-				sethum('Health', health)
-			end)
 		end
 	end)
 	Cmd('jump', '/pname:string', 'Makes a player jump!', function()
@@ -117,6 +110,7 @@ if Apoc then
 
 	local ncard
 	local hcard
+	local changedevent
 	function round(num)
 	  return math.floor(num + 0.5) / 1
 	end
@@ -136,7 +130,9 @@ if Apoc then
 				local percent = round(player.Character.Humanoid.Health / player.Character.Humanoid.MaxHealth * 100)
 				ncard = Cmd:PNotify('Name: '.. player.Name)
 				hcard = Cmd:PNotify('Health: '..round(player.Character.Humanoid.Health)..'/'..player.Character.Humanoid.MaxHealth..' : '..percent..'%')
-				local changed = player.Character.Humanoid.Changed:connect(function()
+				local x = hcard
+				if changedevent then changedevent:disconnect() end
+				changedevent = player.Character.Humanoid.GetPropertyChangedSignal('Health'):connect(function()
 					if player.Character and player.Character:FindFirstChild('Humanoid') and hcard.card and ncard.card then
 						local percent = round(player.Character.Humanoid.Health / player.Character.Humanoid.MaxHealth * 100)
 						hcard:ChangeText('Health: '..round(player.Character.Humanoid.Health)..'/'..player.Character.Humanoid.MaxHealth..' : '..percent..'%')
@@ -157,7 +153,7 @@ if Apoc then
 	end)
 	Cmd('lua', '/code:string', 'Executes the lua code provided', function()
 		local f, e1 = loadstring(code)
-		if not f then Cmd:Notify(err) return end
+		if not f then Cmd:Notify(e1) return end
 		local c, e2 = pcall(f)
 		if not c then Cmd:Notify(e2) return end
 	end)
@@ -229,7 +225,7 @@ if Apoc then
 			end
 		end
 		if sel ~= nil then
-			Cmd('spawn/pname:'..pname..'/items:'..table.concat(sel, ','))
+			Cmd('spawn/'..pname..'/'..table.concat(sel, ','))
 		else
 			Cmd:Notify('Couldn\'t find kit: ' .. kitname)
 		end
@@ -243,8 +239,8 @@ if Apoc then
 		for i,veh in pairs(workspace.Vehicles:children()) do
 			if Cmd:GFind(veh.Name, vehname) and veh:FindFirstChild('Stats') then
 				for i,plr in pairs(Cmd:AltGetPlr(pname)) do
-					local ppart = veh.PrimaryPart and veh:GetPrimaryPartCFrame().p or veh:FindFirstChildOfClass('').Position
-					placemat(veh, plr.Character.HumanoidRootPart.Position - veh:GetPrimaryPartCFrame().p + Vector3.new(math.random(-20,20),0,math.random(-20,20)))
+					local ppart = veh.PrimaryPart and veh:GetPrimaryPartCFrame().p or veh:FindFirstChild('Base', true).Position
+					placemat(veh, plr.Character.HumanoidRootPart.Position - ppart + Vector3.new(math.random(-20,20),0,math.random(-20,20)))
 					break
 				end
 				break
@@ -254,9 +250,6 @@ if Apoc then
 	Cmd('vehicles', '/none', 'Lists out vehicles', function()
 		for i,veh in pairs(workspace.Vehicles:children()) do
 			Cmd:Notify('Vehicle: ' .. veh.Name)
-			if veh.Name == 'SportsCar' then
-				table.foreach(veh:children(), function(a,b) Cmd:Notify(a .. ' ' .. b) end)
-			end
 		end
 	end)
 	Cmd('findveh', '/vehname:string', 'Finds the vehicle of name', function()
@@ -265,6 +258,9 @@ if Apoc then
 				Cmd:Notify('Vehicle Found: '..veh.Name)
 			end
 		end
+	end)
+	Cmd('fhum', '/none', 'Fixes your humanoid :D', function()
+		changeparent(MyHumanoid, game.Players.LocalPlayer.Character)
 	end)
 
 
