@@ -103,6 +103,7 @@ local types = {
 	end
 }
 
+local Version = "1a"
 local Commands = {}
 local Separator = [[ ]]
 local NCards = {}	
@@ -811,5 +812,7 @@ setmetatable(Cmd,{
 })
 
 Cmd:CreateGui()
+
+Cmd:Notify("Version "..Version)
 
 return Cmd
