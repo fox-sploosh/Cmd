@@ -137,7 +137,7 @@ function Cmd:Execute(whole)
 		local msg = Cmd:RepCode(whole:sub(#cmdn + 2))
 		local args = Cmd:ParseArg(msg, cmd)
 		spawn(function()
-			if #args <= cmd.Satisfiable then
+			if args <= cmd.Satisfiable then
 				Cmd:Notify('Invalid arguments: Argument amount not satisfied')
 				return
 			end
@@ -283,6 +283,7 @@ function Cmd:ParseArg(str, cmd)
 	local ltype = "string"
 	local curr = ""
 	local inquote = false
+	local count = 0
 
 	for i,c in pairs(chars) do
 		if c == "/" and trim(curr) ~= "" and not inquote then
@@ -301,12 +302,13 @@ function Cmd:ParseArg(str, cmd)
 
 	for i,arg in pairs(fargs) do
 		if cargs[i] then
+			count = count + 1
 			ltype = cargs[i].type
 			args[cargs[i].name] = types[cargs[i].type] and types[cargs[i].type](arg) or arg
 		end
 	end
 
-	return args
+	return count
 end
 
 function Cmd:GetPlr(n)
